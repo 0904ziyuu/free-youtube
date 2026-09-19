@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>高機能プレイヤー (ショートカット対応)</title>
+    <title>高機能プレイヤー (ショートカット・URL入力対応)</title>
     <style>
         :root {
             --bg-color: #0f0f0f;
@@ -52,6 +52,7 @@
         .input-row {
             display: flex;
             gap: 10px;
+            align-items: center;
         }
 
         input {
@@ -84,6 +85,7 @@
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s;
+            white-space: nowrap;
         }
         button:hover { background-color: #444; }
         button.primary {
@@ -174,11 +176,11 @@
             padding: 12px;
             border-radius: 8px;
             border: 1px solid #333;
-            font-size: 12px;
+            font-size: 13px;
             color: var(--text-sub);
             text-align: left;
             margin-bottom: 20px;
-            line-height: 1.6;
+            line-height: 1.8;
         }
         .key {
             background: #333;
@@ -186,6 +188,13 @@
             padding: 2px 6px;
             border-radius: 4px;
             font-family: monospace;
+            font-weight: bold;
+        }
+        .warning-text {
+            color: #fbbf24;
+            font-size: 12px;
+            margin-top: 8px;
+            display: block;
         }
     </style>
 </head>
@@ -196,19 +205,24 @@
 
         <!-- 操作説明パネル -->
         <div class="shortcut-guide">
-            <strong>【便利なキーボード操作】</strong><br>
+            <strong>【キーボード操作】</strong><br>
             <span class="key">→</span> : 5秒進む　
             <span class="key">←</span> : 5秒戻る　
             <span class="key">↑</span> : 1秒戻る　
-            <span class="key">↓</span> : 初めから再生<br>
-            <span class="key">_</span> (アンダーバー) : 1秒進む　<br>
-            <span class="key">N</span> : 現在の再生位置を記憶 (上書き可能)　
-            <span class="key">M</span> : 記憶した位置から再生
+            <span class="key">↓</span> : 初めから<br>
+            <span class="key">_</span> (アンダーバー) : 1秒進む<br>
+            <span class="key">N</span> : 再生位置を記憶 (上書き可能)　
+            <span class="key">B</span> : 記憶した位置から再生<br>
+            <span class="warning-text">※キーが効かなくなった場合は、動画の外側（黒い背景など）を一度クリックしてください。</span>
         </div>
 
         <div class="input-panel">
             <div class="input-row">
-                <input type="password" id="api-key" placeholder="APIキーを入力 (必須)" autocomplete="off">
+                <input type="password" id="api-key" placeholder="APIキーを入力 (必須・自動保存されません)" autocomplete="off">
+            </div>
+            <div class="input-row">
+                <input type="text" id="playlist-url" placeholder="プレイリストURL または チャンネルID(UC...) を入力して読み込む">
+                <button class="primary" onclick="fetchVideosFromInput()">URLから読込</button>
             </div>
         </div>
 
@@ -223,27 +237,25 @@
             <div id="overlay" class="shortcut-overlay"></div>
         </div>
         
-        <div id="status-msg" style="color: #aaa; margin-bottom: 12px; font-size: 13px;">APIキーを入力し、ボタンを選んでください。</div>
+        <div id="status-msg" style="color: #aaa; margin-bottom: 12px; font-size: 13px;">APIキーを入力し、URLを読み込むかボタンを選んでください。</div>
         
         <div id="video-grid" class="video-grid"></div>
     </div>
 
     <script>
-        // ここに好きなだけ再生リストやチャンネル(UU...)を登録できます
+        // プリセットとして登録する再生リストやチャンネル
         const PRESET_PLAYLISTS = [
             { name: "まさのふろつぐ", id: "UUrk3BDRC9xzEFMj9cGly6pQ" },
             { name: "BIGサイトウ", id: "UUT3tWrUcsXmpOEF39q0VGnA" },
             { name: "まるり64", id: "UUYKJj4dLZuyS2TqcxFplmbw" },
-            // 必要に応じて追加: { name: "リスト名", id: "PLまたはUUのID" }
         ];
 
-        let ytPlayer;           // YouTubeプレイヤー本体
+        let ytPlayer;           
         let isPlayerReady = false; 
         let activeVideoId = null;
         let savedTime = null;   // Nキーで記憶する時間（秒）
         let overlayTimer = null;
 
-        // 初期化処理：ボタンの生成とYouTube APIの読み込み
         window.addEventListener('DOMContentLoaded', () => {
             renderPresetButtons();
             loadYouTubeAPI();
@@ -266,21 +278,44 @@
             firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
         }
 
-        // YouTube APIのスクリプトが読み込まれると自動で呼ばれる関数
         function onYouTubeIframeAPIReady() {
             ytPlayer = new YT.Player('live-player', {
                 width: '100%',
                 height: '100%',
-                videoId: '', // 最初は空
+                videoId: '', 
                 playerVars: {
                     'autoplay': 1,
                     'rel': 0,
-                    'enablejsapi': 1 // JSからの制御を許可
+                    'enablejsapi': 1 
                 },
                 events: {
                     'onReady': () => { isPlayerReady = true; }
                 }
             });
+        }
+
+        function fetchVideosFromInput() {
+            const inputUrl = document.getElementById('playlist-url').value.trim();
+            const playlistId = extractPlaylistId(inputUrl);
+            
+            if (!playlistId) {
+                alert('正しいプレイリストURL、またはチャンネルID（UC...）を入力してください。');
+                return;
+            }
+            fetchVideos(playlistId);
+        }
+
+        function extractPlaylistId(input) {
+            const match = input.match(/[?&]list=([^&]+)/);
+            if (match) return match[1];
+            
+            if (input.startsWith('UC')) {
+                return 'UU' + input.slice(2); 
+            }
+            if (input.startsWith('UU') || input.startsWith('PL')) {
+                return input;
+            }
+            return null;
         }
 
         async function fetchVideos(playlistId) {
@@ -294,13 +329,13 @@
             }
 
             grid.innerHTML = '';
-            statusMsg.textContent = '動画を取得中... (100件以上ある場合は数秒かかります)';
+            statusMsg.textContent = '動画を取得中... (100件以上ある場合は少し時間がかかります)';
 
             try {
                 let allItems = [];
                 let nextPageToken = '';
 
-                // 次のページがある限りループして全件取得する
+                // 次のページがある限りループして全件（100件以上でも）取得する
                 do {
                     const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${playlistId}&maxResults=50&pageToken=${nextPageToken}&key=${apiKey}`;
                     const res = await fetch(url);
@@ -312,10 +347,9 @@
                     nextPageToken = data.nextPageToken || '';
                 } while (nextPageToken);
 
-                // 有効な動画だけをフィルタリング
                 const validVideos = allItems.filter(item => {
                     const title = item.snippet.title;
-                    const thumb = item.snippet.thumbnails?.medium?.url;
+                    const thumb = item.snippet.thumbnails?.medium?.url || item.snippet.thumbnails?.default?.url;
                     return thumb && title !== 'Private video' && title !== 'Deleted video';
                 });
 
@@ -327,12 +361,11 @@
                 statusMsg.textContent = `全 ${validVideos.length} 件の動画を取得しました！`;
                 renderGrid(validVideos);
                 
-                // 1曲目を自動再生
                 playVideo(validVideos[0].snippet.resourceId.videoId);
 
             } catch (err) {
                 console.error(err);
-                statusMsg.textContent = 'エラーが発生しました。APIキーが正しいか確認してください。';
+                statusMsg.textContent = 'エラーが発生しました。APIキーまたはURLが正しいか確認してください。';
             }
         }
 
@@ -342,6 +375,7 @@
 
             videos.forEach(item => {
                 const videoId = item.snippet.resourceId.videoId;
+                const thumb = item.snippet.thumbnails?.medium?.url || item.snippet.thumbnails?.default?.url;
                 
                 const card = document.createElement('div');
                 card.className = 'video-card';
@@ -349,7 +383,7 @@
                 card.onclick = () => playVideo(videoId);
 
                 card.innerHTML = `
-                    <img src="${item.snippet.thumbnails.medium.url}" alt="thumbnail" loading="lazy">
+                    <img src="${thumb}" alt="thumbnail" loading="lazy">
                     <div class="title">${item.snippet.title}</div>
                 `;
                 grid.appendChild(card);
@@ -359,12 +393,10 @@
         function playVideo(videoId) {
             activeVideoId = videoId;
             
-            // API経由で動画IDを読み込んで再生
             if (isPlayerReady && ytPlayer && ytPlayer.loadVideoById) {
                 ytPlayer.loadVideoById(videoId);
             }
 
-            // 見た目の更新（赤枠をつける）
             document.querySelectorAll('.video-card').forEach(card => {
                 if (card.dataset.id === videoId) {
                     card.classList.add('playing');
@@ -374,68 +406,60 @@
             });
         }
 
+        // キーボード操作リスナー
         document.addEventListener('keydown', (event) => {
-            // APIキー入力欄などにフォーカスがある場合はショートカットを無効化
+            // 入力欄にフォーカスがある場合はショートカットを無効化（文字入力の邪魔をしない）
             if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
             
-            // プレイヤーが準備できていない場合は何もしない
             if (!isPlayerReady || !ytPlayer || !ytPlayer.getCurrentTime) return;
 
-            const currentTime = ytPlayer.getCurrentTime(); // 現在の再生位置(秒)を取得
+            const currentTime = ytPlayer.getCurrentTime();
             let handled = false;
 
-            switch(event.key) {
-                case 'ArrowRight':
-                    ytPlayer.seekTo(currentTime + 5, true);
-                    showOverlay('▶▶ 5秒進む');
-                    handled = true;
-                    break;
-                case 'ArrowLeft':
-                    ytPlayer.seekTo(currentTime - 5, true);
-                    showOverlay('◀◀ 5秒戻る');
-                    handled = true;
-                    break;
-                case 'ArrowUp':
-                    ytPlayer.seekTo(currentTime - 1, true);
-                    showOverlay('◀ 1秒戻る');
-                    handled = true;
-                    break;
-                case 'ArrowDown':
-                    ytPlayer.seekTo(0, true); // 0秒（初め）に戻る
-                    showOverlay('⏮ 初めから');
-                    handled = true;
-                    break;
-                case '_': // アンダースコア
-                    ytPlayer.seekTo(currentTime + 1, true);
-                    showOverlay('▶ 1秒進む');
-                    handled = true;
-                    break;
-                case 'n':
-                case 'N':
-                    savedTime = currentTime; // 現在位置を変数に記憶
-                    showOverlay(`📌 位置を記憶 (${formatTime(savedTime)})`);
-                    handled = true;
-                    break;
-                case 'm':
-                case 'M':
-                    if (savedTime !== null) {
-                        ytPlayer.seekTo(savedTime, true);
-                        ytPlayer.playVideo(); // 停止している場合は再生を再開
-                        showOverlay(`再生再開 (${formatTime(savedTime)})`);
-                    } else {
-                        showOverlay(`⚠️ 記憶された位置がありません`);
-                    }
-                    handled = true;
-                    break;
+            // event.code を使うことで、日本語入力(IME)がオンでも物理キーとして認識させます
+            const code = event.code;
+            const key = event.key; // _(アンダーバー)の判定には key を使います
+
+            if (code === 'ArrowRight') {
+                ytPlayer.seekTo(currentTime + 5, true);
+                showOverlay('▶▶ 5秒進む');
+                handled = true;
+            } else if (code === 'ArrowLeft') {
+                ytPlayer.seekTo(currentTime - 5, true);
+                showOverlay('◀◀ 5秒戻る');
+                handled = true;
+            } else if (code === 'ArrowUp') {
+                ytPlayer.seekTo(currentTime - 1, true);
+                showOverlay('◀ 1秒戻る');
+                handled = true;
+            } else if (code === 'ArrowDown') {
+                ytPlayer.seekTo(0, true);
+                showOverlay('⏮ 初めから');
+                handled = true;
+            } else if (key === '_') { 
+                ytPlayer.seekTo(currentTime + 1, true);
+                showOverlay('▶ 1秒進む');
+                handled = true;
+            } else if (code === 'KeyN') { // Nキー
+                savedTime = currentTime; 
+                showOverlay(`📌 位置を記憶 (${formatTime(savedTime)})`);
+                handled = true;
+            } else if (code === 'KeyB') { // Bキー（Mキーの代わり）
+                if (savedTime !== null) {
+                    ytPlayer.seekTo(savedTime, true);
+                    ytPlayer.playVideo(); 
+                    showOverlay(`再生再開 (${formatTime(savedTime)})`);
+                } else {
+                    showOverlay(`⚠️ 記憶された位置がありません`);
+                }
+                handled = true;
             }
 
-            // ショートカットキーとして処理した場合は、画面スクロールなどの標準動作を止める
             if (handled) {
                 event.preventDefault();
             }
         });
 
-        // 画面右上に通知を少しの間表示する関数
         function showOverlay(text) {
             const overlay = document.getElementById('overlay');
             overlay.textContent = text;
@@ -444,10 +468,9 @@
             if (overlayTimer) clearTimeout(overlayTimer);
             overlayTimer = setTimeout(() => {
                 overlay.classList.remove('show');
-            }, 1500); // 1.5秒後に消える
+            }, 1500); 
         }
 
-        // 秒数を 分:秒 形式にフォーマット (例: 65秒 -> 1:05)
         function formatTime(seconds) {
             const m = Math.floor(seconds / 60);
             const s = Math.floor(seconds % 60);
