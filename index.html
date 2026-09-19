@@ -3,16 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>全動画対応 プレイリストセレクター</title>
+    <title>高機能プレイヤー (ショートカット対応)</title>
     <style>
         :root {
             --bg-color: #0f0f0f;
-            --card-bg: #212121;
-            --accent-color: #ff0000;
-            --accent-hover: #cc0000;
+            --card-bg: #1c1c1c;
+            --accent-color: #ef4444;
+            --accent-hover: #dc2626;
             --text-main: #ffffff;
-            --text-sub: #aaaaaa;
-            --border-color: #333333;
+            --text-sub: #a3a3a3;
+            --border-color: #333;
         }
 
         body {
@@ -30,19 +30,12 @@
 
         .container {
             width: 100%;
-            max-width: 960px;
+            max-width: 900px;
             background-color: var(--card-bg);
-            padding: 24px;
+            padding: 20px;
             border-radius: 16px;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
             text-align: center;
-        }
-
-        .header-title {
-            margin-top: 0;
-            margin-bottom: 20px;
-            font-size: 24px;
-            font-weight: 700;
         }
 
         .input-panel {
@@ -50,7 +43,7 @@
             flex-direction: column;
             gap: 12px;
             margin-bottom: 20px;
-            background-color: #181818;
+            background: #111;
             padding: 16px;
             border-radius: 12px;
             border: 1px solid var(--border-color);
@@ -59,19 +52,9 @@
         .input-row {
             display: flex;
             gap: 10px;
-            align-items: center;
         }
 
-        .input-label {
-            font-size: 13px;
-            color: var(--text-sub);
-            white-space: nowrap;
-            width: 80px;
-            text-align: right;
-        }
-
-        input[type="password"],
-        input[type="text"] {
+        input {
             flex: 1;
             padding: 10px 14px;
             border-radius: 8px;
@@ -82,314 +65,275 @@
             outline: none;
             transition: border-color 0.2s;
         }
+        input:focus { border-color: var(--accent-color); }
 
-        input:focus {
-            border-color: var(--accent-color);
-        }
-
-        .playlist-buttons-container {
+        .preset-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
             margin-bottom: 20px;
         }
 
-        .section-label {
-            font-size: 14px;
-            color: var(--text-sub);
-            margin-bottom: 10px;
-            text-align: left;
-        }
-
-        .playlist-grid {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            justify-content: flex-start;
-        }
-
-        .playlist-btn {
+        button {
             padding: 10px 18px;
-            background-color: #333333;
-            color: #ffffff;
-            border: 2px solid #444444;
+            background-color: #333;
+            color: #fff;
+            border: 1px solid #555;
             border-radius: 8px;
-            font-size: 14px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all 0.2s;
         }
-
-        .playlist-btn:hover {
-            background-color: #444444;
-            border-color: #666666;
-        }
-
-        .playlist-btn.active {
+        button:hover { background-color: #444; }
+        button.primary {
             background-color: var(--accent-color);
-            border-color: #ff4444;
-            box-shadow: 0 0 10px rgba(255, 0, 0, 0.4);
+            border-color: var(--accent-color);
         }
+        button.primary:hover { background-color: var(--accent-hover); }
 
-        .video-container {
+        .video-wrapper {
             position: relative;
             padding-bottom: 56.25%;
             height: 0;
             overflow: hidden;
             border-radius: 12px;
-            background-color: #000000;
-            margin-bottom: 20px;
+            background-color: #000;
+            margin-bottom: 16px;
             box-shadow: 0 4px 16px rgba(0,0,0,0.6);
         }
 
-        .video-container iframe {
+        .video-wrapper iframe {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            border: 0;
+            top: 0; left: 0; width: 100%; height: 100%; border: 0;
         }
 
-        .status-msg {
+        /* 画面右上の操作通知オーバーレイ */
+        .shortcut-overlay {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background-color: rgba(0, 0, 0, 0.85);
+            color: #4ade80;
+            padding: 8px 16px;
+            border-radius: 8px;
             font-size: 14px;
-            color: var(--text-sub);
-            margin-bottom: 12px;
-            min-height: 20px;
+            font-weight: bold;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 10;
+            backdrop-filter: blur(4px);
         }
-
-        .error-msg {
-            color: #ff5555;
-        }
+        .shortcut-overlay.show { opacity: 1; }
 
         .video-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-            gap: 14px;
-            max-height: 480px;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 12px;
+            max-height: 400px;
             overflow-y: auto;
-            padding: 12px;
-            background-color: #141414;
+            padding: 10px;
+            background-color: #111;
             border-radius: 12px;
             border: 1px solid var(--border-color);
         }
-
-        .video-grid::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        .video-grid::-webkit-scrollbar-thumb {
-            background-color: #444;
-            border-radius: 4px;
-        }
+        .video-grid::-webkit-scrollbar { width: 8px; }
+        .video-grid::-webkit-scrollbar-thumb { background-color: #444; border-radius: 4px; }
 
         .video-card {
             cursor: pointer;
             text-align: left;
-            transition: transform 0.2s, border-color 0.2s, background-color 0.2s;
+            transition: transform 0.2s, border-color 0.2s;
             border: 2px solid transparent;
             border-radius: 8px;
             padding: 6px;
-            background-color: #1e1e1e;
+            background: #1a1a1a;
         }
-
-        .video-card:hover {
-            transform: translateY(-3px);
-            border-color: var(--accent-color);
-            background-color: #282828;
-        }
-
-        .video-card.playing {
-            border-color: var(--accent-color);
-            background-color: #331111;
-        }
-
+        .video-card:hover { transform: translateY(-3px); border-color: var(--accent-color); }
+        .video-card.playing { border-color: var(--accent-color); background-color: #331111; }
         .video-card img {
             width: 100%;
             border-radius: 6px;
             aspect-ratio: 16/9;
             object-fit: cover;
-            display: block;
         }
-
         .video-card .title {
             font-size: 12px;
-            line-height: 1.4;
             margin-top: 8px;
+            line-height: 1.4;
             display: -webkit-box;
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
-            color: #eeeeee;
+            color: #eee;
+        }
+
+        .shortcut-guide {
+            background: #111;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            font-size: 12px;
+            color: var(--text-sub);
+            text-align: left;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        .key {
+            background: #333;
+            color: #fff;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
         }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h2 class="header-title">🎬 再生リスト選択プレイヤー</h2>
+        <h2>🎮 高機能プレイヤー (ショートカット対応)</h2>
 
-        <!-- APIキー＆カスタムURL設定 -->
+        <!-- 操作説明パネル -->
+        <div class="shortcut-guide">
+            <strong>【便利なキーボード操作】</strong><br>
+            <span class="key">→</span> : 5秒進む　
+            <span class="key">←</span> : 5秒戻る　
+            <span class="key">↑</span> : 1秒戻る　
+            <span class="key">↓</span> : 初めから再生<br>
+            <span class="key">_</span> (アンダーバー) : 1秒進む　<br>
+            <span class="key">N</span> : 現在の再生位置を記憶 (上書き可能)　
+            <span class="key">M</span> : 記憶した位置から再生
+        </div>
+
         <div class="input-panel">
             <div class="input-row">
-                <span class="input-label">APIキー:</span>
-                <input type="password" id="api-key" placeholder="Google Cloudで取得したAPIキーを入力" autocomplete="off">
-            </div>
-            <div class="input-row">
-                <span class="input-label">手入力URL:</span>
-                <input type="text" id="custom-url" placeholder="別の再生リストURL / IDを直接入力したい場合">
-                <button class="playlist-btn" onclick="loadCustomPlaylist()">取得</button>
+                <input type="password" id="api-key" placeholder="APIキーを入力 (必須)" autocomplete="off">
             </div>
         </div>
 
-        <!-- 特定再生リストの選択ボタン一覧 -->
-        <div class="playlist-buttons-container">
-            <div class="section-label">📌 登録済み再生リストから選択:</div>
-            <div id="playlist-buttons" class="playlist-grid">
-                <!-- JavaScriptでプリセットボタンがここに動的に追加されます -->
-            </div>
+        <div class="preset-buttons" id="preset-container">
+            <!-- JSでプリセットボタンがここに生成されます -->
         </div>
 
-        <!-- 動画プレイヤー -->
-        <div class="video-container">
-            <iframe id="live-player" src="" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+        <div class="video-wrapper">
+            <!-- YouTube IFrame API がこのdivをプレイヤーに置き換えます -->
+            <div id="live-player"></div>
+            <!-- 通知メッセージ用オーバーレイ -->
+            <div id="overlay" class="shortcut-overlay"></div>
         </div>
-
-        <!-- 状態メッセージ -->
-        <div id="status-msg" class="status-msg">APIキーを入力し、上のリストボタンを選択してください。</div>
         
-        <!-- 全動画サムネイルグリッド -->
+        <div id="status-msg" style="color: #aaa; margin-bottom: 12px; font-size: 13px;">APIキーを入力し、ボタンを選んでください。</div>
+        
         <div id="video-grid" class="video-grid"></div>
     </div>
 
     <script>
-        
-        // =========================================================================
-        // 【設定】よく見る再生リストをここに登録できます。
-        // id は再生リストのID（PL...）または チャンネル全動画ID（UU...）を指定してください。
-        // =========================================================================
+        // ここに好きなだけ再生リストやチャンネル(UU...)を登録できます
         const PRESET_PLAYLISTS = [
             { name: "まさのふろつぐ", id: "UUrk3BDRC9xzEFMj9cGly6pQ" },
             { name: "BIGサイトウ", id: "UUT3tWrUcsXmpOEF39q0VGnA" },
-            { name: "まるり64", id: "UUYKJj4dLZuyS2TqcxFplmbw" }
-            // 追加したい場合はカンマ区切りで自由に追加できます:
-            // { name: "お気に入りリスト", id: "PLxxxxxxxxxxxxxxxx" }
+            { name: "まるり64", id: "UUYKJj4dLZuyS2TqcxFplmbw" },
+            // 必要に応じて追加: { name: "リスト名", id: "PLまたはUUのID" }
         ];
 
-        let currentVideoList = [];
+        let ytPlayer;           // YouTubeプレイヤー本体
+        let isPlayerReady = false; 
         let activeVideoId = null;
+        let savedTime = null;   // Nキーで記憶する時間（秒）
+        let overlayTimer = null;
 
+        // 初期化処理：ボタンの生成とYouTube APIの読み込み
         window.addEventListener('DOMContentLoaded', () => {
             renderPresetButtons();
+            loadYouTubeAPI();
         });
 
-        // プリセットボタンを表示する関数
         function renderPresetButtons() {
-            const container = document.getElementById('playlist-buttons');
-            container.innerHTML = '';
-
-            PRESET_PLAYLISTS.forEach((pl, index) => {
+            const container = document.getElementById('preset-container');
+            PRESET_PLAYLISTS.forEach(preset => {
                 const btn = document.createElement('button');
-                btn.className = 'playlist-btn';
-                btn.textContent = pl.name;
-                btn.onclick = () => {
-                    // アクティブスタイルの付け替え
-                    document.querySelectorAll('.playlist-btn').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    
-                    fetchPlaylistVideos(pl.id);
-                };
+                btn.textContent = preset.name;
+                btn.onclick = () => fetchVideos(preset.id);
                 container.appendChild(btn);
             });
         }
 
-        function loadCustomPlaylist() {
-            const input = document.getElementById('custom-url').value.trim();
-            if (!input) {
-                showStatus('再生リストURLまたはIDを入力してください。', true);
-                return;
-            }
-
-            const playlistId = extractPlaylistId(input);
-            if (!playlistId) {
-                showStatus('有効な再生リストURLまたはIDではありません。', true);
-                return;
-            }
-
-            // プリセットボタンの選択解除
-            document.querySelectorAll('.playlist-btn').forEach(b => b.classList.remove('active'));
-            fetchPlaylistVideos(playlistId);
+        function loadYouTubeAPI() {
+            const tag = document.createElement('script');
+            tag.src = "https://www.youtube.com/iframe_api";
+            const firstScriptTag = document.getElementsByTagName('script')[0];
+            firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
         }
 
-        async function fetchPlaylistVideos(playlistId) {
+        // YouTube APIのスクリプトが読み込まれると自動で呼ばれる関数
+        function onYouTubeIframeAPIReady() {
+            ytPlayer = new YT.Player('live-player', {
+                width: '100%',
+                height: '100%',
+                videoId: '', // 最初は空
+                playerVars: {
+                    'autoplay': 1,
+                    'rel': 0,
+                    'enablejsapi': 1 // JSからの制御を許可
+                },
+                events: {
+                    'onReady': () => { isPlayerReady = true; }
+                }
+            });
+        }
+
+        async function fetchVideos(playlistId) {
             const apiKey = document.getElementById('api-key').value.trim();
+            const statusMsg = document.getElementById('status-msg');
+            const grid = document.getElementById('video-grid');
+
             if (!apiKey) {
-                showStatus('APIキーを入力してください（伏字入力欄）。', true);
+                alert('APIキーを入力してください。');
                 return;
             }
 
-            const grid = document.getElementById('video-grid');
             grid.innerHTML = '';
-            showStatus('動画一覧を全件取得中...（100件以上の場合は数秒かかります）');
+            statusMsg.textContent = '動画を取得中... (100件以上ある場合は数秒かかります)';
 
             try {
-                // 102件などの大容量動画も全件取得するためページネーションループを実行
-                const videos = await fetchAllPages(playlistId, apiKey);
-                
-                if (videos.length === 0) {
-                    showStatus('動画が見つかりませんでした。プライベート動画または削除済みの可能性があります。', true);
+                let allItems = [];
+                let nextPageToken = '';
+
+                // 次のページがある限りループして全件取得する
+                do {
+                    const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${playlistId}&maxResults=50&pageToken=${nextPageToken}&key=${apiKey}`;
+                    const res = await fetch(url);
+                    const data = await res.json();
+
+                    if (data.error) throw new Error(data.error.message);
+
+                    if (data.items) allItems = allItems.concat(data.items);
+                    nextPageToken = data.nextPageToken || '';
+                } while (nextPageToken);
+
+                // 有効な動画だけをフィルタリング
+                const validVideos = allItems.filter(item => {
+                    const title = item.snippet.title;
+                    const thumb = item.snippet.thumbnails?.medium?.url;
+                    return thumb && title !== 'Private video' && title !== 'Deleted video';
+                });
+
+                if (validVideos.length === 0) {
+                    statusMsg.textContent = '動画が見つかりませんでした。';
                     return;
                 }
 
-                currentVideoList = videos;
-                showStatus(`全 ${videos.length} 件の動画を取得しました！クリックして再生できます。`);
-                renderGrid(videos);
+                statusMsg.textContent = `全 ${validVideos.length} 件の動画を取得しました！`;
+                renderGrid(validVideos);
                 
-                // 1件目の動画を自動セット
-                if (videos.length > 0) {
-                    const firstVideoId = videos[0].snippet.resourceId.videoId;
-                    playVideo(firstVideoId);
-                }
+                // 1曲目を自動再生
+                playVideo(validVideos[0].snippet.resourceId.videoId);
 
             } catch (err) {
                 console.error(err);
-                showStatus('取得中にエラーが発生しました。APIキーおよびIDをご確認ください。', true);
+                statusMsg.textContent = 'エラーが発生しました。APIキーが正しいか確認してください。';
             }
-        }
-
-        async function fetchAllPages(playlistId, apiKey) {
-            let allItems = [];
-            let nextPageToken = '';
-
-            do {
-                // 1回のAPI呼び出しで最大50件取得
-                const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${playlistId}&maxResults=50&pageToken=${nextPageToken}&key=${apiKey}`;
-                const res = await fetch(url);
-                const data = await res.json();
-
-                if (data.error) {
-                    throw new Error(data.error.message);
-                }
-
-                if (data.items) {
-                    allItems = allItems.concat(data.items);
-                }
-                
-                // 次のページ（51件目〜）が存在すればトークンが入る
-                nextPageToken = data.nextPageToken || '';
-            } while (nextPageToken);
-
-            return allItems;
-        }
-
-        function extractPlaylistId(input) {
-            const match = input.match(/[?&]list=([^&]+)/);
-            if (match) return match[1];
-            
-            if (input.startsWith('UC')) {
-                return 'UU' + input.slice(2); // チャンネルIDを全動画再生リストIDに変換
-            }
-            if (input.startsWith('UU') || input.startsWith('PL')) {
-                return input;
-            }
-            return null;
         }
 
         function renderGrid(videos) {
@@ -398,20 +342,15 @@
 
             videos.forEach(item => {
                 const videoId = item.snippet.resourceId.videoId;
-                const title = item.snippet.title;
-                const thumb = item.snippet.thumbnails?.medium?.url || item.snippet.thumbnails?.default?.url;
-
-                // 削除済み動画や非公開動画のスキップ
-                if (!thumb || title === 'Private video' || title === 'Deleted video') return;
-
+                
                 const card = document.createElement('div');
                 card.className = 'video-card';
                 card.dataset.id = videoId;
                 card.onclick = () => playVideo(videoId);
 
                 card.innerHTML = `
-                    <img src="${thumb}" alt="thumbnail" loading="lazy">
-                    <div class="title">${escapeHtml(title)}</div>
+                    <img src="${item.snippet.thumbnails.medium.url}" alt="thumbnail" loading="lazy">
+                    <div class="title">${item.snippet.title}</div>
                 `;
                 grid.appendChild(card);
             });
@@ -419,37 +358,100 @@
 
         function playVideo(videoId) {
             activeVideoId = videoId;
-            const player = document.getElementById('live-player');
-            player.src = "https://www.youtube.com/embed/" + videoId + "?autoplay=1";
+            
+            // API経由で動画IDを読み込んで再生
+            if (isPlayerReady && ytPlayer && ytPlayer.loadVideoById) {
+                ytPlayer.loadVideoById(videoId);
+            }
 
-            // 再生中の動画カードのスタイルを変更
+            // 見た目の更新（赤枠をつける）
             document.querySelectorAll('.video-card').forEach(card => {
                 if (card.dataset.id === videoId) {
                     card.classList.add('playing');
-                    card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                 } else {
                     card.classList.remove('playing');
                 }
             });
         }
 
-        function showStatus(msg, isError = false) {
-            const el = document.getElementById('status-msg');
-            el.textContent = msg;
-            if (isError) {
-                el.classList.add('error-msg');
-            } else {
-                el.classList.remove('error-msg');
+        document.addEventListener('keydown', (event) => {
+            // APIキー入力欄などにフォーカスがある場合はショートカットを無効化
+            if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+            
+            // プレイヤーが準備できていない場合は何もしない
+            if (!isPlayerReady || !ytPlayer || !ytPlayer.getCurrentTime) return;
+
+            const currentTime = ytPlayer.getCurrentTime(); // 現在の再生位置(秒)を取得
+            let handled = false;
+
+            switch(event.key) {
+                case 'ArrowRight':
+                    ytPlayer.seekTo(currentTime + 5, true);
+                    showOverlay('▶▶ 5秒進む');
+                    handled = true;
+                    break;
+                case 'ArrowLeft':
+                    ytPlayer.seekTo(currentTime - 5, true);
+                    showOverlay('◀◀ 5秒戻る');
+                    handled = true;
+                    break;
+                case 'ArrowUp':
+                    ytPlayer.seekTo(currentTime - 1, true);
+                    showOverlay('◀ 1秒戻る');
+                    handled = true;
+                    break;
+                case 'ArrowDown':
+                    ytPlayer.seekTo(0, true); // 0秒（初め）に戻る
+                    showOverlay('⏮ 初めから');
+                    handled = true;
+                    break;
+                case '_': // アンダースコア
+                    ytPlayer.seekTo(currentTime + 1, true);
+                    showOverlay('▶ 1秒進む');
+                    handled = true;
+                    break;
+                case 'n':
+                case 'N':
+                    savedTime = currentTime; // 現在位置を変数に記憶
+                    showOverlay(`📌 位置を記憶 (${formatTime(savedTime)})`);
+                    handled = true;
+                    break;
+                case 'm':
+                case 'M':
+                    if (savedTime !== null) {
+                        ytPlayer.seekTo(savedTime, true);
+                        ytPlayer.playVideo(); // 停止している場合は再生を再開
+                        showOverlay(`再生再開 (${formatTime(savedTime)})`);
+                    } else {
+                        showOverlay(`⚠️ 記憶された位置がありません`);
+                    }
+                    handled = true;
+                    break;
             }
+
+            // ショートカットキーとして処理した場合は、画面スクロールなどの標準動作を止める
+            if (handled) {
+                event.preventDefault();
+            }
+        });
+
+        // 画面右上に通知を少しの間表示する関数
+        function showOverlay(text) {
+            const overlay = document.getElementById('overlay');
+            overlay.textContent = text;
+            overlay.classList.add('show');
+
+            if (overlayTimer) clearTimeout(overlayTimer);
+            overlayTimer = setTimeout(() => {
+                overlay.classList.remove('show');
+            }, 1500); // 1.5秒後に消える
         }
 
-        function escapeHtml(str) {
-            return str
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
+        // 秒数を 分:秒 形式にフォーマット (例: 65秒 -> 1:05)
+        function formatTime(seconds) {
+            const m = Math.floor(seconds / 60);
+            const s = Math.floor(seconds % 60);
+            return `${m}:${s.toString().padStart(2, '0')}`;
         }
     </script>
 </body>
